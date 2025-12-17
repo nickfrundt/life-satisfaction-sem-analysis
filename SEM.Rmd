@@ -1,0 +1,605 @@
+title: "EDA - Nick Frundt, Ross Moniz, Kimberly Tellez-Correa"
+output:
+  html_document: default
+  pdf_document: default
+date: "2025-10-09"
+---
+```{r warning=FALSE, message=FALSE}
+library(rmarkdown); library(knitr); library(moments); library(ggplot2)
+library(scatterplot3d); library(corrplot); library(pso) ; library(corrplot)
+library(psych); library(GPArotation); library(lavaan); library(scatterplot3d)
+```
+```{r message=FALSE, warning=FALSE}
+#from time interval of 2020-2023 during covid pandemic
+
+life_satis_vs_GDP <- read.csv("https://ourworldindata.org/grapher/gdp-vs-happiness.csv?v=1&csvType=full&useColumnShortNames=true")
+life_satis_vs_life_exp <- read.csv("https://ourworldindata.org/grapher/life-satisfaction-vs-life-expectancy.csv?v=1&csvType=full&useColumnShortNames=true")
+fertilityrate <- read.csv("https://ourworldindata.org/grapher/children-born-per-woman.csv?v=1&csvType=full&useColumnShortNames=true")
+life_satis_vs_mortality <- read.csv("https://ourworldindata.org/grapher/life-satisfaction-vs-child-mortality.csv?v=1&csvType=full&useColumnShortNames=true")
+
+#2 matrices
+#GDP
+LSG_matrix <- as.matrix(life_satis_vs_GDP)
+LSG_matrix <- LSG_matrix[,-6] # gets rid of column six (continent)
+LSG_matrix <- LSG_matrix[,-2] # gets rid of column 2 (country code)
+#Life expectancy
+LSLE_matrix <- as.matrix(life_satis_vs_life_exp)
+LSLE_matrix <- LSLE_matrix[,-2] #gets rid of country code
+LSLE_matrix <- LSLE_matrix[,-6] #gets rid of continent
+LSLE_matrix <- LSLE_matrix[,-5] #gets rid of population
+# fertility rate
+fertility_matrix <- as.matrix(fertilityrate)
+fertility_matrix <- fertility_matrix[,-2] #gets rid of country code
+#child mortality (deaths per 100 live births) and Population 
+CMP_matrix <- as.matrix(life_satis_vs_mortality)
+CMP_matrix <- CMP_matrix[,-2] #gets rid of country code
+CMP_matrix <- CMP_matrix[,-6] #gets rid of region
+
+#correct years for each country
+#GDP
+LSG_matrix_Australia <- LSG_matrix[c(342,343,344,345), ,drop=FALSE]
+LSG_matrix_Brazil <- LSG_matrix[c(903,904,905,906), ,drop=FALSE]
+LSG_matrix_Colombia <- LSG_matrix[c(1380,1381,1382,1383), ,drop=FALSE]
+LSG_matrix_China <- LSG_matrix[c(1343,1344,1345,1346), ,drop=FALSE]
+LSG_matrix_Ethiopia <- LSG_matrix[c(2127,2128,2129,2130), ,drop=FALSE]
+LSG_matrix_Germany <- LSG_matrix[c(2476,2477,2478,2479), ,drop=FALSE]
+LSG_matrix_India <- LSG_matrix[c(3007,3008,3009,3010), ,drop=FALSE]
+LSG_matrix_Japan <- LSG_matrix[c(3288,3289,3290,3291), ,drop=FALSE]
+LSG_matrix_Mexico <- LSG_matrix[c(4295,4296,4297,4298), ,drop=FALSE]
+LSG_matrix_NewZealand <- LSG_matrix[c(4747,4748,4749,4750), ,drop=FALSE]
+LSG_matrix_Nigeria <- LSG_matrix[c(4852,4853,4854,4855), ,drop=FALSE]
+LSG_matrix_Russia <- LSG_matrix[c(5521,5522,5523,5524), ,drop=FALSE]
+LSG_matrix_US <- LSG_matrix[c(7088,7089,7090,7091), ,drop=FALSE]
+#Life expectancy
+LSLE_matrix_Australia <- LSLE_matrix[c(3261,3262,3263,3264), ,drop=FALSE]
+LSLE_matrix_Brazil <- LSLE_matrix[c(7343,7344,7345,7346), ,drop=FALSE]
+LSLE_matrix_Colombia <- LSLE_matrix[c(10885,10886,10887,10888), ,drop=FALSE]
+LSLE_matrix_China <- LSLE_matrix[c(10621,10622,10623,10624), ,drop=FALSE]
+LSLE_matrix_Ethiopia <- LSLE_matrix[c(16877,16878,16879,16880), ,drop=FALSE]
+LSLE_matrix_Germany <- LSLE_matrix[c(19782,19783,19784,19785), ,drop=FALSE]
+LSLE_matrix_India <- LSLE_matrix[c(23915,23916,23917,23918), ,drop=FALSE]
+LSLE_matrix_Japan <- LSLE_matrix[c(26013,26014,26015,26016), ,drop=FALSE]
+LSLE_matrix_Mexico <- LSLE_matrix[c(33774,33775,33776,33777), ,drop=FALSE]
+LSLE_matrix_NewZealand <- LSLE_matrix[c(37438,37439,37440,37441), ,drop=FALSE]
+LSLE_matrix_Nigeria <- LSLE_matrix[c(38202,38203,38204,38205), ,drop=FALSE]
+LSLE_matrix_Russia <- LSLE_matrix[c(43634,43635,43636,43637), ,drop=FALSE]
+LSLE_matrix_US <- LSLE_matrix[c(55939,55940,55941,55942), ,drop=FALSE]
+
+#fertility rate
+fertility_matrix_Australia <- fertility_matrix[c(1033,1034,1035,1036), ,drop=FALSE]
+fertility_matrix_Brazil <- fertility_matrix[c(2294,2295,2296,2297), ,drop=FALSE]
+fertility_matrix_Colombia <- fertility_matrix[c(3436,3437,3438,3439), ,drop=FALSE]
+fertility_matrix_China <- fertility_matrix[c(3362,3363,3364,3365), ,drop=FALSE]
+fertility_matrix_Ethiopia <- fertility_matrix[c(5258,5259,5260,5261), ,drop=FALSE]
+fertility_matrix_Germany <- fertility_matrix[c(6161,6162,6163,6164), ,drop=FALSE]
+fertility_matrix_India <- fertility_matrix[c(7567,7568,7569,7570), ,drop=FALSE]
+fertility_matrix_Japan <- fertility_matrix[c(8236,8237,8238,8239), ,drop=FALSE]
+fertility_matrix_Mexico <- fertility_matrix[c(10974,10975,10976,10977), ,drop=FALSE]
+fertility_matrix_NewZealand <- fertility_matrix[c(12158,12159,12160,12161), ,drop=FALSE]
+fertility_matrix_Nigeria <- fertility_matrix[c(12380,12381,12382,12383), ,drop=FALSE]
+fertility_matrix_Russia <- fertility_matrix[c(14092,14093,14094,14095), ,drop=FALSE]
+fertility_matrix_US <- fertility_matrix[c(17919,17920,17921,17922), ,drop=FALSE]
+#CMP
+CMP_matrix_Australia <- CMP_matrix[c(3199,3200,3201,3202), ,drop=FALSE]
+CMP_matrix_Brazil <- CMP_matrix[c(7281,7282,7283,7284), ,drop=FALSE]
+CMP_matrix_Colombia <- CMP_matrix[c(10823,10824,10825,10826), ,drop=FALSE]
+CMP_matrix_China <- CMP_matrix[c(10559,10560,10561,10562), ,drop=FALSE]
+CMP_matrix_Ethiopia <- CMP_matrix[c(16815,16816,16817,16818), ,drop=FALSE]
+CMP_matrix_Germany <- CMP_matrix[c(19720,19721,19722,19723), ,drop=FALSE]
+CMP_matrix_India <- CMP_matrix[c(23853,23854,23855,23856), ,drop=FALSE]
+CMP_matrix_Japan <- CMP_matrix[c(25952,25953,25954,25955), ,drop=FALSE]
+CMP_matrix_Mexico <- CMP_matrix[c(33417,33418,33419,33420), ,drop=FALSE]
+CMP_matrix_NewZealand <- CMP_matrix[c(37007,37008,37009,37010), ,drop=FALSE]
+CMP_matrix_Nigeria <- CMP_matrix[c(37771,37772,37773,37774), ,drop=FALSE]
+CMP_matrix_Russia <- CMP_matrix[c(43210,43211,43212,43213), ,drop=FALSE]
+CMP_matrix_US <- CMP_matrix[c(55515,55516,55517,55518), ,drop=FALSE]
+
+#Australia
+Australia_matrix <- cbind(LSG_matrix_Australia, LSLE_matrix_Australia[,3], fertility_matrix_Australia[,3],CMP_matrix_Australia[,4],CMP_matrix_Australia[,5])
+colnames(Australia_matrix)[5:8]<- c("life_expectancy__sex_all__age_0__variant_estimates","fertility_rate_hist
+","observation_value__indicator_child_mortality_rate__sex_total__wealth_quintile_total__unit_of_measure_deaths_per_100_live_births
+","population_historical")
+#Brazil
+Brazil_matrix <- cbind(LSG_matrix_Brazil, LSLE_matrix_Brazil[,3], fertility_matrix_Brazil[,3],CMP_matrix_Brazil[,4],CMP_matrix_Brazil[,5])
+colnames(Brazil_matrix)[5:8]<- c("life_expectancy__sex_all__age_0__variant_estimates","fertility_rate_hist
+","observation_value__indicator_child_mortality_rate__sex_total__wealth_quintile_total__unit_of_measure_deaths_per_100_live_births
+","population_historical")
+#Colombia
+Colombia_matrix <- cbind(LSG_matrix_Colombia, LSLE_matrix_Colombia[,3], fertility_matrix_Colombia[,3],CMP_matrix_Colombia[,4],CMP_matrix_Colombia[,5])
+colnames(Colombia_matrix)[5:8]<- c("life_expectancy__sex_all__age_0__variant_estimates","fertility_rate_hist
+","observation_value__indicator_child_mortality_rate__sex_total__wealth_quintile_total__unit_of_measure_deaths_per_100_live_births
+","population_historical")
+#China
+China_matrix <- cbind(LSG_matrix_China, LSLE_matrix_China[,3], fertility_matrix_China[,3],CMP_matrix_China[,4],CMP_matrix_China[,5])
+colnames(China_matrix)[5:8]<- c("life_expectancy__sex_all__age_0__variant_estimates","fertility_rate_hist
+","observation_value__indicator_child_mortality_rate__sex_total__wealth_quintile_total__unit_of_measure_deaths_per_100_live_births
+","population_historical")
+#Ethiopia
+Ethiopia_matrix <- cbind(LSG_matrix_Ethiopia, LSLE_matrix_Ethiopia[,3], fertility_matrix_Ethiopia[,3],CMP_matrix_Ethiopia[,4],CMP_matrix_Ethiopia[,5])
+colnames(Ethiopia_matrix)[5:8]<- c("life_expectancy__sex_all__age_0__variant_estimates","fertility_rate_hist
+","observation_value__indicator_child_mortality_rate__sex_total__wealth_quintile_total__unit_of_measure_deaths_per_100_live_births
+","population_historical")
+#Germany
+Germany_matrix <- cbind(LSG_matrix_Germany, LSLE_matrix_Germany[,3], fertility_matrix_Germany[,3],CMP_matrix_Germany[,4],CMP_matrix_Germany[,5])
+colnames(Germany_matrix)[5:8]<- c("life_expectancy__sex_all__age_0__variant_estimates","fertility_rate_hist
+","observation_value__indicator_child_mortality_rate__sex_total__wealth_quintile_total__unit_of_measure_deaths_per_100_live_births
+","population_historical")
+#India
+India_matrix <- cbind(LSG_matrix_India, LSLE_matrix_India[,3], fertility_matrix_India[,3],CMP_matrix_India[,4],CMP_matrix_India[,5])
+colnames(India_matrix)[5:8]<- c("life_expectancy__sex_all__age_0__variant_estimates","fertility_rate_hist
+","observation_value__indicator_child_mortality_rate__sex_total__wealth_quintile_total__unit_of_measure_deaths_per_100_live_births
+","population_historical")
+#Japan
+Japan_matrix <- cbind(LSG_matrix_Japan, LSLE_matrix_Japan[,3], fertility_matrix_Japan[,3],CMP_matrix_Japan[,4],CMP_matrix_Japan[,5])
+colnames(Japan_matrix)[5:8]<- c("life_expectancy__sex_all__age_0__variant_estimates","fertility_rate_hist
+","observation_value__indicator_child_mortality_rate__sex_total__wealth_quintile_total__unit_of_measure_deaths_per_100_live_births
+","population_historical")
+#Mexico
+Mexico_matrix <- cbind(LSG_matrix_Mexico, LSLE_matrix_Mexico[,3], fertility_matrix_Mexico[,3],CMP_matrix_Mexico[,4],CMP_matrix_Mexico[,5])
+colnames(Mexico_matrix)[5:8]<- c("life_expectancy__sex_all__age_0__variant_estimates","fertility_rate_hist
+","observation_value__indicator_child_mortality_rate__sex_total__wealth_quintile_total__unit_of_measure_deaths_per_100_live_births
+","population_historical")
+#New Zealand
+NewZealand_matrix <- cbind(LSG_matrix_NewZealand, LSLE_matrix_NewZealand[,3], fertility_matrix_NewZealand[,3],CMP_matrix_NewZealand[,4],CMP_matrix_NewZealand[,5])
+colnames(NewZealand_matrix)[5:8]<- c("life_expectancy__sex_all__age_0__variant_estimates","fertility_rate_hist
+","observation_value__indicator_child_mortality_rate__sex_total__wealth_quintile_total__unit_of_measure_deaths_per_100_live_births
+","population_historical")
+#Nigeria
+Nigeria_matrix <- cbind(LSG_matrix_Nigeria, LSLE_matrix_Nigeria[,3], fertility_matrix_Nigeria[,3],CMP_matrix_Nigeria[,4],CMP_matrix_Nigeria[,5])
+colnames(Nigeria_matrix)[5:8]<- c("life_expectancy__sex_all__age_0__variant_estimates","fertility_rate_hist
+","observation_value__indicator_child_mortality_rate__sex_total__wealth_quintile_total__unit_of_measure_deaths_per_100_live_births
+","population_historical")
+#Russia
+Russia_matrix <- cbind (LSG_matrix_Russia, LSLE_matrix_Russia[,3], fertility_matrix_Russia[,3],CMP_matrix_Russia[,4],CMP_matrix_Russia[,5])
+colnames(Russia_matrix)[5:8]<- c("life_expectancy__sex_all__age_0__variant_estimates","fertility_rate_hist
+","observation_value__indicator_child_mortality_rate__sex_total__wealth_quintile_total__unit_of_measure_deaths_per_100_live_births
+","population_historical")
+#US
+US_matrix <- cbind(LSG_matrix_US, LSLE_matrix_US[,3], fertility_matrix_US[,3],CMP_matrix_US[,4],CMP_matrix_US[,5])
+colnames(US_matrix)[5:8]<- c("life_expectancy__sex_all__age_0__variant_estimates","fertility_rate_hist
+","observation_value__indicator_child_mortality_rate__sex_total__wealth_quintile_total__unit_of_measure_deaths_per_100_live_births
+","population_historical")
+
+#combining all
+Full_matrix <- rbind(Australia_matrix,Brazil_matrix,Colombia_matrix,China_matrix,Ethiopia_matrix,Germany_matrix,India_matrix,Japan_matrix,Mexico_matrix,NewZealand_matrix,Nigeria_matrix,Russia_matrix,US_matrix)
+
+#Adding two more variables: CO2 Emissions and political corruption level
+df <- read.csv("https://ourworldindata.org/grapher/life-satisfaction-vs-co-emissions-per-capita.csv?v=1&csvType=full&useColumnShortNames=true")
+
+countries_to_keep <- c("Australia", "Brazil", "Colombia", "China", "Ethiopia", "Germany", "India", "Japan", "Mexico", "New Zealand", "Nigeria", "Russia", "United States")
+
+filtered_data <- df[df$Entity %in% countries_to_keep & 
+                      df$Year >= 2020 & 
+                      df$Year <= 2023, 
+                    c(1, 3, 5)]  # Keep columns 1 (Entity), 3 (Year), and 5
+matrix <- as.matrix(filtered_data)
+
+Full_matrix <- cbind(Full_matrix, matrix[,3])
+Full_matrix
+
+df <- read.csv("https://ourworldindata.org/grapher/political-corruption-index.csv?v=1&csvType=full&useColumnShortNames=true")
+
+countries_to_keep <- c("Australia", "Brazil", "Colombia", "China", "Ethiopia", "Germany", "India", "Japan", "Mexico", "New Zealand", "Nigeria", "Russia", "United States")
+
+filtered_data <- df[df$Entity %in% countries_to_keep & 
+                      df$Year >= 2020 & 
+                      df$Year <= 2023, 
+                    c(1,3,4)]  # Keep columns 1 (Entity), 3 (Year), and 5
+matrix2 <- as.matrix(filtered_data)
+
+Full_matrix <- cbind(Full_matrix, matrix2[,3])
+```
+
+```{r message=FALSE, warning=FALSE}
+#matrix
+numeric_full_matrix <- matrix(as.numeric(Full_matrix), ncol = 10)
+numeric_full_matrix <- numeric_full_matrix[,-1] #gets rid of country name since it is NOT numerical
+numeric_full_matrix <- numeric_full_matrix[,-1] #gets rid of years 2020-2023
+colnames(numeric_full_matrix) <- c("Ladder score", "GDP per Capita","Life Expectancy","Fertility rate","Mortality rate","Population","CO2 Emissions","Political Corruption") 
+```
+
+summary statistics
+```{r}
+summary(numeric_full_matrix)
+```
+```{r}
+sd(numeric_full_matrix)
+```
+```{r}
+skewness(numeric_full_matrix)
+```
+```{r}
+kurtosis(numeric_full_matrix)
+```
+```{r}
+describe(numeric_full_matrix)
+```
+
+```{r}
+plot(numeric_full_matrix, pch=16)
+```
+
+```{r}
+pairs(numeric_full_matrix, pch = 16)
+```
+
+
+One of the main issues would include the Na's from life expectancy that reduced the sample size as well as the skewness of all the factors. GDP had a positive skew which would be more right tailed, Ladder score and life expectancy had a negative skew which would be left tailed. The kurtosis for each of the factors were also lower than 3.
+
+
+```{r}
+# correlation matrix
+numeric_full_matrix_cov <- cov(numeric_full_matrix, use = "pairwise.complete.obs")
+corrmatrix <- cor(numeric_full_matrix, use = "pairwise.complete.obs")
+numeric_full_matrix
+numeric_full_matrix_cov
+corrmatrix
+corrplot(corrmatrix, "square")
+```
+
+Studying these statistics, we can see that economic prosperity is closely linked to happiness, that a higher life expectancy also is closely linked to happiness, and that wealthier nations tend to have higher life expectancies. These are all positive correlations, meaning they all grow in tandem.
+
+```{r message=FALSE, warning=FALSE}
+# Build a tidy frame (uses your existing objects)
+df <- data.frame(
+  Entity   = as.character(Full_matrix[, 1]),
+  Year     = suppressWarnings(as.integer(Full_matrix[, 2])),
+  ladder   = as.numeric(numeric_full_matrix[, 1]),  # "Ladder score"
+  gdp      = as.numeric(numeric_full_matrix[, 2]),  # "GDP per Capita"
+  lifeexp  = as.numeric(numeric_full_matrix[, 3])   # "Life Expectancy"
+)
+df <- df[complete.cases(df[, c("ladder","gdp","lifeexp")]), ]
+
+# 2D Mahalanobis flags for a chosen pair
+flag_outliers_2d <- function(a, b, alpha = 0.001) {
+  X   <- as.matrix(df[, c(a, b)])
+  md  <- mahalanobis(X, colMeans(X), cov(X))
+  thr <- qchisq(1 - alpha, df = 2)
+  list(flag = md > thr, threshold = thr)
+}
+
+# Outliers for the two pairs required by the rubric
+ol_gdp_ladder <- flag_outliers_2d("gdp", "ladder")
+ol_le_ladder  <- flag_outliers_2d("lifeexp", "ladder")
+
+df$out_gdp_ladder <- ol_gdp_ladder$flag
+df$out_le_ladder  <- ol_le_ladder$flag
+df$out_any        <- df$out_gdp_ladder | df$out_le_ladder
+
+# Visual identification: label only flagged outliers
+df$lbl_gdp <- ifelse(df$out_gdp_ladder, df$Entity, NA)
+df$lbl_le  <- ifelse(df$out_le_ladder,  df$Entity, NA)
+
+# Plot 1: GDP to Ladder
+print(
+  ggplot(df, aes(gdp, ladder, color = out_gdp_ladder)) +
+    geom_point() +
+    geom_text(aes(label = lbl_gdp), na.rm = TRUE, vjust = -0.6, size = 3) +
+    labs(title = "Potential 2D Outliers: GDP vs Ladder (Mahalanobis)",
+         x = "GDP per Capita", y = "Life Satisfaction (Ladder)")
+)
+
+# Plot 2: Life Expectancy to Ladder
+print(
+  ggplot(df, aes(lifeexp, ladder, color = out_le_ladder)) +
+    geom_point() +
+    geom_text(aes(label = lbl_le), na.rm = TRUE, vjust = -0.6, size = 3) +
+    labs(title = "Potential 2D Outliers: Life Expectancy vs Ladder (Mahalanobis)",
+         x = "Life Expectancy (years)", y = "Life Satisfaction (Ladder)")
+)
+
+# Influence on the correlation matrix
+vars <- c("ladder","gdp","lifeexp")
+
+COR_full <- cor(df[, vars], use = "pairwise.complete.obs")
+COR_no   <- cor(df[!df$out_any, vars], use = "pairwise.complete.obs")
+DELTA    <- COR_no - COR_full
+
+# Compact results for discussion
+list(
+  counts = list(
+    n_total             = nrow(df),
+    n_out_gdp_ladder    = sum(df$out_gdp_ladder),
+    n_out_le_ladder     = sum(df$out_le_ladder),
+    n_out_any           = sum(df$out_any),
+    chisq_thr_gdp_ladder= ol_gdp_ladder$threshold,
+    chisq_thr_le_ladder = ol_le_ladder$threshold
+  ),
+  COR_before = round(COR_full, 3),
+  COR_after  = round(COR_no,   3),
+  COR_delta  = round(DELTA,    3)
+)
+
+```
+EFA Evaluation
+```{r}
+predictors <- numeric_full_matrix[,c(2,4,5,6,7)]
+responses <- numeric_full_matrix[,c(1,3,8)]
+
+predictors_cor <- cor(predictors)
+responses_cor <- cor(responses)
+
+eigenp <- eigen(predictors_cor)
+eigenp
+
+eigenr <- eigen(responses_cor)
+eigenr
+```
+Scree Plot and Intrinsic Dimensionality Criterion
+```{r}
+plot(eigenp$values, type = "b", xlab = "Component", ylab = "Eigenvalue",
+     main = "Scree Plot – Countries")
+
+plot(eigenr$values, type = "b", xlab = "Component", ylab = "Eigenvalue",
+     main = "Scree Plot – Countries")
+```
+```{r}
+kaiserp <- sum(eigenp$values > 1.0)
+kaiserp
+jolliffep <- sum(eigenp$values > 0.7)
+jolliffep
+
+kaiserr <- sum(eigenr$values > 1.0)
+kaiserr
+jolliffer <- sum(eigenr$values > 0.7)
+jolliffer
+```
+
+Under the elbow criteria for the predictors we see a significant drop when it came to the first and second eigenvalue since it changes from 5.28 to 1.43 which would suggest that the intrinsic dimensionality would be 2. This is also supported based off of the result of the Kaiser criteria (eigenvalues > 1), and the Jolliffe criteria (eigenvalues > 0.7) that suggests the intrinsic dimensionality is likely 2
+
+For the responses, there is a significant drop after the first factor, which suggests that just one is enough. This is also supported by the Kaiser and Jolliffe criteria.
+
+PCA for Predictors
+```{r}
+loadings <- pca(r = predictors, nfactors = 2, rotate = "none")
+loadings
+plot(loadings,
+     xlab="PC1", ylab="PC2",
+     xlim=c(-1,1), ylim=c(-1,1),
+     pch=19)
+```
+Looking at the loadings, there are two complex dimensions - Fertility Rate and Population. This would suggest that a rotation would be useful.
+```{r}
+loadings_orthogonal <- pca(r = predictors, nfactors = 2, rotate = "varimax")
+loadings_orthogonal
+plot(loadings_orthogonal,
+     xlab="PC1", ylab="PC2",
+     xlim=c(-1,1), ylim=c(-1,1),
+     pch=19)
+```
+After an orthogonal rotation, we still have two complex dimensions, namely GDP per Capita and CO2 Emissions.
+```{r}
+loadings_oblique <- pca(r = predictors, nfactors = 2, rotate = "oblimin")
+loadings_oblique
+plot(loadings_oblique,
+     xlab="PC1", ylab="PC2",
+     xlim=c(-1,1), ylim=c(-1,1),
+     pch=19)
+```
+Now after doing an oblique rotation on our predictors, we are down to only one complex dimension which is only .01 above our threshold of 0.30. This means that oblique is the better rotation.
+
+
+PCA for Responses:
+```{r}
+loadings <- pca(r = responses, nfactors = 2, rotate = "none")
+loadings
+plot(loadings,
+     xlab="PC1", ylab="PC2",
+     xlim=c(-1,1), ylim=c(-1,1),
+     pch=19)
+```
+```{r}
+loadings_orthogonal <- pca(r = responses, nfactors = 2, rotate = "varimax")
+loadings_orthogonal
+plot(loadings_orthogonal,
+     xlab="PC1", ylab="PC2",
+     xlim=c(-1,1), ylim=c(-1,1),
+     pch=19)
+```
+```{r}
+loadings_oblique <- pca(r = responses, nfactors = 2, rotate = "oblimin")
+loadings_oblique
+plot(loadings_oblique,
+     xlab="PC1", ylab="PC2",
+     xlim=c(-1,1), ylim=c(-1,1),
+     pch=19)
+```
+Overall our response variables do not need any rotations and will fit with only one factor. The orthogonal rotation was worse for dimensions complexity, while the oblique rotation improved purity by a minimal amount.
+
+```{r efa-setup, message=FALSE, warning=FALSE}
+
+ensure_matrix <- function(x) {
+  if (is.data.frame(x)) return(as.matrix(x))
+  if (is.matrix(x)) return(x)
+  stop("numeric_full_matrix not found as matrix/data.frame")
+}
+
+efa_exists <- function() {
+  objs <- mget(ls(envir = .GlobalEnv), envir = .GlobalEnv, inherits = TRUE)
+  any(vapply(objs, function(x) inherits(x, "fa") || inherits(x, "factanal"), logical(1)))
+}
+
+if (!efa_exists()) {
+  if (!exists("numeric_full_matrix")) {
+    stop("I couldn't find 'numeric_full_matrix'. Please define your data matrix before this chunk.")
+  }
+  Xraw <- ensure_matrix(numeric_full_matrix)
+  X <- Xraw[stats::complete.cases(Xraw), , drop = FALSE]
+  X <- scale(X)  
+  R <- cor(X)
+
+  ev <- eigen(R, only.values = TRUE)$values
+  kaiser_k <- max(1L, sum(ev > 1))  
+
+  fa_result <- psych::fa(R, nfactors = kaiser_k, rotate = "promax", fm = "ml")
+
+  efa_obj <- fa_result
+  assign("fa_result", fa_result, envir = .GlobalEnv)
+  assign("efa_obj", efa_obj, envir = .GlobalEnv)
+
+  message(sprintf("Created 'fa_result' with %d factors (Kaiser rule).", kaiser_k))
+} else {
+  message("EFA object already exists in your environment; not overwriting.")
+}
+```
+
+```{r}
+
+`%||%` <- function(x, y) if (is.null(x)) y else x
+
+find_efa_obj <- function() {
+  objs <- mget(ls(envir = .GlobalEnv), envir = .GlobalEnv, inherits = TRUE)
+  for (nm in names(objs)) {
+    x <- objs[[nm]]
+    if (inherits(x, "fa") || inherits(x, "factanal")) {
+      message("Using EFA object: ", nm)
+      return(x)
+    }
+  }
+  stop(
+    "No EFA object of class 'fa' or 'factanal' found.\n",
+    "► Fix: assign your EFA fit to a variable *in the global env*, e.g.\n",
+    "    efa_obj <- fa_result   # or: efa_obj <- my_factanal_fit"
+  )
+}
+
+efa_obj <- find_efa_obj()
+
+
+get_EFA_matrices <- function(fit) {
+  if (inherits(fit, "fa")) {
+    
+    Lambda <- unclass(fit$loadings)             
+    Phi    <- fit$Phi
+    if (is.null(Phi)) Phi <- diag(ncol(Lambda)) 
+  } else if (inherits(fit, "factanal")) {
+    
+    L <- unclass(fit$loadings)                  
+    Lambda <- as.matrix(L)
+
+    if (!is.null(fit$Tmat)) {
+      Tmat <- as.matrix(fit$Tmat)
+      
+      Ti   <- solve(Tmat)
+      Phi  <- Ti %*% t(Ti)
+    } else {
+      Phi  <- diag(ncol(Lambda))
+    }
+  } else {
+    stop("Unsupported EFA object.")
+  }
+
+  Structure <- Lambda %*% Phi   
+  list(Lambda = Lambda, Phi = Phi, Structure = Structure)
+}
+
+mats <- get_EFA_matrices(efa_obj)
+Lambda   <- mats$Lambda
+Phi      <- mats$Phi
+Structure<- mats$Structure
+
+p <- nrow(Lambda)
+k <- ncol(Lambda)
+
+
+h2 <- rowSums(Lambda * (Lambda %*% Phi))
+u2 <- 1 - h2
+
+comm_table <- data.frame(
+  Variable = rownames(Lambda) %||% paste0("V", seq_len(p)),
+  h2 = round(h2, 3),
+  u2 = round(u2, 3)
+)
+
+
+SS_pattern   <- colSums(Lambda^2)                                   
+SS_common    <- diag(t(Lambda) %*% Structure)                        
+prop_pattern <- SS_pattern / p
+prop_common  <- SS_common  / p
+cum_pattern  <- cumsum(prop_pattern)
+cum_common   <- cumsum(prop_common)
+
+var_table <- data.frame(
+  Factor = paste0("F", seq_len(k)),
+  `SS (pattern)`        = round(SS_pattern, 3),
+  `Prop Var (pattern)`  = round(prop_pattern, 3),
+  `Cum Var (pattern)`   = round(cum_pattern, 3),
+  `SS (common)`         = round(SS_common, 3),
+  `Prop Var (common)`   = round(prop_common, 3),
+  `Cum Var (common)`    = round(cum_common, 3)
+)
+
+total_prop_pattern <- sum(prop_pattern)
+total_prop_common  <- sum(prop_common)
+total_prop_pattern   <- sum(prop_pattern)
+total_prop_common <- sum(prop_common)
+
+suppressPackageStartupMessages({
+  if (!requireNamespace("knitr", quietly = TRUE)) stop("Please install 'knitr'.")
+  if (!requireNamespace("kableExtra", quietly = TRUE)) {
+    print(knitr::kable(var_table, caption = "Variance Accounted For by Factors"))
+    print(knitr::kable(comm_table, caption = "Communalities (h²) and Uniquenesses (u²)"))
+  } else {
+    library(kableExtra)
+    print(knitr::kable(var_table, caption = "Variance Accounted For by Factors") |> kableExtra::kable_styling(full_width = FALSE))
+    print(knitr::kable(comm_table, caption = "Communalities (h²) and Uniquenesses (u²)") |> kableExtra::kable_styling(full_width = FALSE))
+  }
+})
+
+cat("\n",
+    "Summary (for the report):\n",
+    sprintf("• Factors explain %.1f%% of variance (pattern) and %.1f%% (common).\n",
+            100*total_prop_pattern, 100*total_prop_common),
+    sprintf("• Highest single-factor share (common): F%d = %.1f%%.\n",
+            which.max(prop_common), 100*max(prop_common)),
+    "• Median communality (h²): ",
+    sprintf("%.2f", median(h2, na.rm = TRUE)), ".\n", sep = "")
+  
+include_graphics("/Users/nicholasfrundt/Desktop/Screenshot 2025-12-04 at 2.42.34 PM.png")
+include_graphics('/Users/nicholasfrundt/Desktop/Screenshot 2025-12-10 at 12.38.40 PM.png')
+```
+The two extracted factors explain approximately 76% of the total common variance in the data (47% by Factor 1 and 29% by Factor 2). Most variables show high communalities >= 0.70, indicating that they are well represented by the factor solution, except Population, which has a lower communality with 0.22. Overall, the two-factor model provides a strong summary of the relationships among the variables.
+
+<h2> SEM </h2>
+
+```{r}
+numeric_full_matrix_scaled <- scale(numeric_full_matrix)
+
+cov_matrix_scaled <- cov(numeric_full_matrix_scaled, use = "pairwise.complete.obs")
+
+colnames(cov_matrix_scaled) <- c("Ladder", "GDP", "LifeExp", "Fertility", "Mortality", "Population", "CO2", "PolCorrupt")
+rownames(cov_matrix_scaled) <- colnames(cov_matrix_scaled)
+
+EQN <- '
+  QualityofLife =~ Ladder + LifeExp + PolCorrupt
+
+  Development =~ GDP + Fertility + Mortality + CO2
+
+  QualityofLife ~ Development + Population
+'
+
+MOD <- sem(model = EQN, sample.cov = cov_matrix_scaled, sample.nobs = 52)
+summary(MOD, fit.measures = TRUE, standardized = TRUE)
+
+include_graphics('/Users/nicholasfrundt/Downloads/PS Path Diagram.drawio.png')
+```
+Degrees of Freedom: 19 (over indentified)
+
+There are many interesting insights in our findings, with some expected results and some unexpected. Firstly, we look at the loadings for our latent variables. Note that we have low p-values for all our statistics except for the regression for population on quality of life.
+
+- For Quality of life, we see that Ladder Score and Life Expectancy have strong positive loadings, while Political corruption has a strong negative loading. This makes sense, as high happiness levels and long lives are associated with a high quality of life. We also see that as political corruption decreases, quality of life increases.
+- For development, we have moderate to strong loadings from GDP and CO2 Emissions, and strong negative loadings from Mortality Rate and Fertility Rate. This also tracks, as we see more developed countries have a higher GDP, and as they become more developed, people tend to live longer and also have less children. Surprisingly, more developed countries also have more CO2 Emissions, but this makes sense when you consider the size and strength of industrial growth in developed countries.
+
+For the regression coefficients, we see that a 1 standard deviation change in Development leads to a 0.886 standard deviation increase in Quality of Life. Interestingly, we also found that population did not have much effect at all on quality of life, which is interesting when you consider how quality of life affects fertility and mortality rates.
+
+The only issue with our results is that we ended up with a negative variance for Life Expectancy, which is statistically impossible. This could be for a few reasons, include possible multicollinearity or a sample size that is too small. If we were to make this model again, this is something we would need to fix, or we could just leave out life-expectancy as a whole.
+
+------------------------------------------------------------------------------------------------------------------------------------------
+Summary and Interpretation
+
+```{r}
+fitMeasures(MOD, c("chisq", "df", "pvalue", "cfi", "tli", "rmsea", "srmr"))
+```
+The chi-square test is significant, which tells that our model doesn't very fit well in the data, but it is common to happen when there is small dataset in SEM.
+
+Overall our fit statistics show that our model did not fit the data very well. Our CFI, TLI, and RMSEA are all very low (below the common threshold of 0.95). Furthermore, our chi-square is very large and are SRMR is not great either. This shows that our model offers little improvement over a baseline independent model. This is due to large discrepancies between the observed and predicted correlations. In the future, we would need to try and construct a model that did a better job of capturing the relationships among the variables.
